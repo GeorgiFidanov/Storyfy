@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Generate Image</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Generate Image from Song</h1>
+    <form method="POST">
+        <input type="text" name="song_name" placeholder="Enter song name" required>
+        <button type="submit">Generate Image</button>
+    </form>
+    {% if image_data %}
+        <h3>Image for {{ song_name }}</h3>
+        <img src="data:image/png;base64,{{ image_data }}" alt="Generated Image">
+    {% endif %}
+</body>
+</html>
