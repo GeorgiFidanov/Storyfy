@@ -38,7 +38,7 @@ cd Storyfy
 
 ```bash
 # Navigate to backend directory
-cd Storyfy
+cd storyfy-backend
 
 # Create virtual environment
 python -m venv venv
