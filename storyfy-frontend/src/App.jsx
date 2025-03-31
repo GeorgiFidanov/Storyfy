@@ -1,80 +1,87 @@
 import './styles/App.css';
 import { useState, useEffect } from 'react';
-import LoginPage from './components/LoginPage';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import axios from 'axios';
+import { FooterProvider } from './context/FooterContext';
 import PlaylistSelector from './components/PlaylistSelector';
+import Gallery from './components/Gallery';
+import LoginPage from './components/LoginPage';
+import UserMenu from './components/UserMenu';
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
-    const checkLoginStatus = async () => {
-      try {
-        console.log('Checking login status...');
-        const response = await fetch('http://localhost:5000/api/playlists', {
-          credentials: 'include'
-        });
-        console.log('Login check response status:', response.status);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Received playlists:', data);
-          setIsLoggedIn(true);
-        } else {
-          const errorData = await response.json();
-          console.error('Login check failed:', errorData);
-          setIsLoggedIn(false);
-          setError(errorData.error || 'Authentication failed');
-        }
-      } catch (error) {
-        console.error('Login check error:', error);
-        setIsLoggedIn(false);
-        setError('Failed to check login status');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    console.log('Current URL:', window.location.href);
-    checkLoginStatus();
+    checkAuthStatus();
   }, []);
 
-  console.log('App render state:', { isLoggedIn, isLoading, error });
+  const checkAuthStatus = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/check-auth', {
+        withCredentials: true
+      });
+      setIsAuthenticated(true);
+      setUserProfile(response.data.user);
+    } catch (error) {
+      setIsAuthenticated(false);
+      setUserProfile(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogin = () => {
     window.location.href = 'http://localhost:5000/login';
+  };
+
+  const handleLogout = async () => {
+    try {
+      await axios.post('http://localhost:5000/logout', {}, { withCredentials: true });
+      setIsAuthenticated(false);
+      setUserProfile(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   if (isLoading) {
     return <div className="loading">Loading...</div>;
   }
 
-  if (error) {
-    return (
-      <div className="error-container">
-        <div className="error-message">
-          <h3>Error:</h3>
-          <p>{error}</p>
-        </div>
-        <button className="login-button" onClick={handleLogin}>
-          Try logging in again
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="app-container">
-      {!isLoggedIn ? (
-        <LoginPage onLogin={handleLogin} />
-      ) : (
-        <div className="content-container">
-          <h2>Your Spotify Playlists</h2>
-          <PlaylistSelector />
-        </div>
-      )}
-    </div>
+    <Router>
+      <FooterProvider>
+        {isAuthenticated && <UserMenu userProfile={userProfile} onLogout={handleLogout} />}
+        <Routes>
+          <Route 
+            path="/login" 
+            element={
+              isAuthenticated ? 
+                <Navigate to="/" replace /> : 
+                <LoginPage onLogin={handleLogin} />
+            } 
+          />
+          <Route 
+            path="/gallery" 
+            element={
+              isAuthenticated ? 
+                <Gallery userProfile={userProfile} /> : 
+                <Navigate to="/login" replace />
+            } 
+          />
+          <Route 
+            path="/" 
+            element={
+              isAuthenticated ? 
+                <PlaylistSelector userProfile={userProfile} /> : 
+                <Navigate to="/login" replace />
+            } 
+          />
+        </Routes>
+      </FooterProvider>
+    </Router>
   );
 }
 

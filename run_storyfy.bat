@@ -2,7 +2,7 @@
 echo Starting Storyfy Application...
 
 :: Start backend
-start cmd /k "cd Storyfy && python app.py"
+start cmd /k "cd storyfy-backend && python app.py"
 
 :: Wait a moment for backend to initialize
 timeout /t 3

@@ -380,7 +380,7 @@ def generate_image():
         # Store the generated image
         image_metadata = {
             'user_id': session['user_id'],
-            'timestamp': datetime.utcnow(),
+            'timestamp': datetime.now(),
             'track_info': track_info,
             'prompt': prompt,
             'image_data': image_data
@@ -563,6 +563,40 @@ def get_spotify_token():
         return None
     
     return session['access_token']
+
+@app.route('/api/check-auth', methods=['GET'])
+def check_auth():
+    if 'access_token' not in session:
+        return jsonify({'authenticated': False}), 401
+        
+    try:
+        token = session['access_token']
+        headers = {'Authorization': f'Bearer {token}'}
+        user_response = requests.get(f'{SPOTIFY_API_URL}me', headers=headers)
+        
+        if user_response.status_code == 200:
+            user_data = user_response.json()
+            return jsonify({
+                'authenticated': True,
+                'user': {
+                    'id': user_data['id'],
+                    'display_name': user_data.get('display_name'),
+                    'email': user_data.get('email'),
+                    'images': user_data.get('images', []),
+                    'external_urls': user_data.get('external_urls', {})
+                }
+            })
+        else:
+            return jsonify({'authenticated': False}), 401
+            
+    except Exception as e:
+        print(f"Auth check error: {str(e)}")
+        return jsonify({'authenticated': False}), 401
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'message': 'Logged out successfully'}), 200
 
 if __name__ == '__main__':
     try:

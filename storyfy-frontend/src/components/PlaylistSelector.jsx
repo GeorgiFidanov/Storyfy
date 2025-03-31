@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Header from './Header';
 import Footer from './Footer';
+import { useFooter } from '../context/FooterContext';
+import LoadingPage from './LoadingPage';
 
 function PlaylistSelector() {
   const [playlists, setPlaylists] = useState([]);
@@ -14,8 +16,12 @@ function PlaylistSelector() {
   const [failedPlaylists, setFailedPlaylists] = useState([]);
   const [loadingTracks, setLoadingTracks] = useState(false);
   const [showingPlaylistView, setShowingPlaylistView] = useState(false);
+  const { setFooterType } = useFooter();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
+    setFooterType('library');
+    
     const fetchPlaylists = async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/playlists', {
@@ -24,7 +30,6 @@ function PlaylistSelector() {
         
         if (Array.isArray(response.data)) {
           setPlaylists(response.data);
-          // Track failed playlists during initial load
           const failed = response.data.filter(p => !p.images?.[0]?.url || !p.name);
           if (failed.length > 0) {
             setFailedPlaylists(failed.map(p => p.name || `Playlist ID: ${p.id}`));
@@ -77,6 +82,9 @@ function PlaylistSelector() {
   const handleGenerateImage = async () => {
     if (!selectedTrack) return;
     
+    setIsGenerating(true);
+    setFooterType('none');
+    
     try {
         const response = await axios.post(
             'http://localhost:5000/api/generate_image',
@@ -102,8 +110,15 @@ function PlaylistSelector() {
     } catch (err) {
         console.error('Failed to generate image:', err);
         setError('Failed to generate image: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setIsGenerating(false);
+      setFooterType('library');
     }
   };
+
+  if (isGenerating) {
+    return <LoadingPage />;
+  }
 
   if (isLoading) {
     return (
@@ -127,7 +142,6 @@ function PlaylistSelector() {
         )}
 
         {!showingPlaylistView ? (
-          // Playlists Grid View
           <>
             <h2>Your Spotify Playlists ({playlists.length})</h2>
             <div className="playlists-container">
@@ -148,6 +162,17 @@ function PlaylistSelector() {
                   </div>
                 ))}
             </div>
+            
+            {failedPlaylists.length > 0 && (
+              <div className="failed-playlists-section">
+                <h3>Playlists that failed to load ({failedPlaylists.length}):</h3>
+                <ul>
+                  {failedPlaylists.map((name, index) => (
+                    <li key={index}>{name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </>
         ) : (
           // Playlist Tracks View
@@ -226,17 +251,6 @@ function PlaylistSelector() {
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {failedPlaylists.length > 0 && (
-          <div className="failed-playlists-section">
-            <h3>Playlists that failed to load ({failedPlaylists.length}):</h3>
-            <ul>
-              {failedPlaylists.map((name, index) => (
-                <li key={index}>{name}</li>
-              ))}
-            </ul>
           </div>
         )}
       </div>
